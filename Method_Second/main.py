@@ -30,8 +30,10 @@ wait = WebDriverWait(browser, settings['waitTime'])
 
 #打开用于登陆的chrome浏览器
 browser_login = webdriver.Chrome()
+browser_batch_cancel = webdriver.Chrome()
 #设置浏览器最长等待时间
 wait_login = WebDriverWait(browser_login, settings['waitTime'])
+wait_batch = WebDriverWait(browser_batch_cancel,30)
 
 def readCookies():
     """
@@ -270,6 +272,8 @@ def login():
     if cookies != False:
         #如果从文件中读取到了cookies，就放入浏览器中
         for cookie in cookies:
+            if isinstance(cookie.get('expiry'), float):
+                cookie['expiry'] = int(cookie['expiry'])
             browser_login.add_cookie(cookie)
     #直接去登陆界面
     browser_login.get('https://passport.jd.com/login.aspx')
@@ -342,18 +346,55 @@ def login():
     #取得原浏览器的所有cookie
     cookies = browser_login.get_cookies()
     browser.get('https://www.jd.com')
+    browser_batch_cancel.get('https://www.jd.com')
     #cookies是一个以字典为元素的list
     for cookie in cookies:
         if isinstance(cookie.get('expiry'), float):
             cookie['expiry'] = int(cookie['expiry'])
         browser.add_cookie(cookie)
+        browser_batch_cancel.add_cookie(cookie)
     #关闭登陆浏览器
     browser_login.quit()
+def cancelFollowing():
+    index = 1
+    browser_batch_cancel.get('https://jd.com')
+    browser_batch_cancel.get('https://t.jd.com/vender/followVenderList.action?index=' + str(index))
+    # 获取网页的html源码
+    # html = browser_batch_cancel.page_source
+    # browser_batch_cancel.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+    time.sleep(10)
+
+    while True :
+        button_login = browser_batch_cancel.find_elements_by_css_selector(
+            '#container  > div.w > #content > #main > div.myfollow-wrap > div.myfollow-bd  > div.mf-selector > div.mf-selector-line.mf-sline-last  > div.s-ext > div.batch-box.J-batchBox > a')
+        if button_login.__len__() <= 0 :
+            break
+        button_login = button_login[0]
+        # 点击
+        button_login.click()
+
+        button_login = browser_batch_cancel.find_elements_by_css_selector(
+            '#container  > div.w > #content > #main > div.myfollow-wrap > div.myfollow-bd  > div.mf-selector > div.mf-selector-line.mf-sline-last  > div.s-ext > div.batch-box.J-batchBox > div.batch-operate > span.op-btn.u-check')
+        button_login = button_login[0]
+        button_login.click()
+
+        button_login = browser_batch_cancel.find_elements_by_css_selector(
+            '#container  > div.w > #content > #main > div.myfollow-wrap > div.myfollow-bd  > div.mf-selector > div.mf-selector-line.mf-sline-last  > div.s-ext > div.batch-box.J-batchBox > div.batch-operate > span.op-btn.u-unfollow')
+        button_login = button_login[0]
+        button_login.click()
+        button_login2 = wait_batch.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR,'body > div.ui-dialog.dialog-confirm > div.ui-dialog-btn > a.ui-dialog-btn-submit')))
+        # button_login2 = button_login2[0]
+        time.sleep(3)
+        button_login2.click()
+        time.sleep(10)
+
 
 if __name__ == '__main__':
 
     #登陆
     login()
+    cancelFollowing()
     #开始申请 iApplyNum为申请成功的个数
     iApplyNum = trycid()
     #申请结束
